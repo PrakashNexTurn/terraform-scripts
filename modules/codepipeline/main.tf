@@ -67,6 +67,10 @@ resource "aws_s3_bucket_lifecycle_configuration" "artifacts" {
     id     = "artifacts_lifecycle"
     status = "Enabled"
 
+    filter {
+      prefix = ""
+    }
+
     expiration {
       days = var.artifacts_retention_days
     }
@@ -248,17 +252,11 @@ resource "aws_codepipeline" "main" {
           input_artifacts  = action.value.input_artifacts
           output_artifacts = action.value.output_artifacts
           run_order       = action.value.run_order
+          region          = action.value.region != "" ? action.value.region : null
 
           configuration = {
             ProjectName   = action.value.project_name
             PrimarySource = action.value.primary_source
-          }
-
-          dynamic "region" {
-            for_each = action.value.region != "" ? [1] : []
-            content {
-              region = action.value.region
-            }
           }
         }
       }
