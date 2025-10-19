@@ -1,0 +1,392 @@
+name: Terraform Modules Testing
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+      - 'feature/**'
+    paths:
+      - 'modules/**'
+      - '.github/workflows/terraform-modules-test.yml'
+  pull_request:
+    branches:
+      - main
+      - develop
+    paths:
+      - 'modules/**'
+      - '.github/workflows/terraform-modules-test.yml'
+
+env:
+  TF_VERSION: '1.12.1'
+  AWS_REGION: 'us-west-2'
+
+jobs:
+  detect-changes:
+    name: Detect Module Changes
+    runs-on: ubuntu-latest
+    outputs:
+      eks: ${{ steps.changes.outputs.eks }}
+      ecr: ${{ steps.changes.outputs.ecr }}
+      codepipeline: ${{ steps.changes.outputs.codepipeline }}
+      iam: ${{ steps.changes.outputs.iam }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Detect changes
+        uses: dorny/paths-filter@v2
+        id: changes
+        with:
+          filters: |
+            eks:
+              - 'modules/eks/**'
+            ecr:
+              - 'modules/ecr/**'
+            codepipeline:
+              - 'modules/codepipeline/**'
+            iam:
+              - 'modules/iam/**'
+
+  test-eks-module:
+    name: Test EKS Module
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.eks == 'true'
+    defaults:
+      run:
+        working-directory: modules/eks
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+
+      - name: Install TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: Run TFLint
+        run: tflint --init && tflint
+
+      - name: Test Basic Example
+        working-directory: modules/eks/examples/basic
+        run: |
+          terraform init
+          terraform validate
+          terraform plan -var="vpc_id=vpc-12345678" -var="subnet_ids=[\"subnet-12345\",\"subnet-67890\"]"
+
+  test-ecr-module:
+    name: Test ECR Module
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.ecr == 'true'
+    defaults:
+      run:
+        working-directory: modules/ecr
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+
+      - name: Install TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: Run TFLint
+        run: tflint --init && tflint
+
+      - name: Test Basic Example
+        working-directory: modules/ecr/examples/basic
+        run: |
+          terraform init
+          terraform validate
+          terraform plan -var="repository_name=test-repo"
+
+  test-codepipeline-module:
+    name: Test CodePipeline Module
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.codepipeline == 'true'
+    defaults:
+      run:
+        working-directory: modules/codepipeline
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+
+      - name: Install TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: Run TFLint
+        run: tflint --init && tflint
+
+  test-iam-module:
+    name: Test IAM Module
+    runs-on: ubuntu-latest
+    needs: detect-changes
+    if: needs.detect-changes.outputs.iam == 'true'
+    defaults:
+      run:
+        working-directory: modules/iam
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+
+      - name: Install TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: Run TFLint
+        run: tflint --init && tflint
+
+  test-all-modules:
+    name: Test All Modules (Full Test)
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    strategy:
+      matrix:
+        module: [eks, ecr, codepipeline, iam]
+    defaults:
+      run:
+        working-directory: modules/${{ matrix.module }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Format Check
+        run: terraform fmt -check
+
+      - name: Install TFLint
+        uses: terraform-linters/setup-tflint@v4
+        with:
+          tflint_version: latest
+
+      - name: Run TFLint
+        run: tflint --init && tflint
+
+      - name: Security Scan with Checkov
+        uses: bridgecrewio/checkov-action@master
+        with:
+          directory: modules/${{ matrix.module }}
+          framework: terraform
+          output_format: sarif
+          output_file_path: reports/results.sarif
+          download_external_modules: true
+
+      - name: Upload Checkov results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: reports/results.sarif
+
+  validate-examples:
+    name: Validate Examples
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        example:
+          - modules/eks/examples/basic
+          - modules/ecr/examples/basic
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Terraform Init
+        working-directory: ${{ matrix.example }}
+        run: terraform init
+
+      - name: Terraform Validate
+        working-directory: ${{ matrix.example }}
+        run: terraform validate
+
+      - name: Terraform Format Check
+        working-directory: ${{ matrix.example }}
+        run: terraform fmt -check
+
+  documentation-check:
+    name: Documentation Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Check README files exist
+        run: |
+          for module in eks ecr codepipeline iam; do
+            if [[ ! -f "modules/$module/README.md" ]]; then
+              echo "Missing README.md for $module module"
+              exit 1
+            fi
+          done
+
+      - name: Check example directories exist
+        run: |
+          for module in eks ecr; do
+            if [[ ! -d "modules/$module/examples/basic" ]]; then
+              echo "Missing examples/basic directory for $module module"
+              exit 1
+            fi
+          done
+
+      - name: Validate Terraform files structure
+        run: |
+          for module in eks ecr codepipeline iam; do
+            required_files=("main.tf" "variables.tf" "outputs.tf" "README.md")
+            for file in "${required_files[@]}"; do
+              if [[ ! -f "modules/$module/$file" ]]; then
+                echo "Missing $file for $module module"
+                exit 1
+              fi
+            done
+          done
+
+  integration-test:
+    name: Integration Test
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request' && github.base_ref == 'main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TF_VERSION }}
+
+      - name: Create test configuration
+        run: |
+          cat > test-integration.tf << 'EOF'
+          # Test integration between modules
+          module "test_iam" {
+            source = "./modules/iam"
+            
+            roles = {
+              "test-role" = {
+                assume_role_policy = jsonencode({
+                  Version = "2012-10-17"
+                  Statement = [
+                    {
+                      Action = "sts:AssumeRole"
+                      Effect = "Allow"
+                      Principal = {
+                        Service = "ec2.amazonaws.com"
+                      }
+                    }
+                  ]
+                })
+                path = "/"
+                description = "Test role"
+                max_session_duration = 3600
+                permissions_boundary = null
+                policy_arns = []
+                inline_policies = {}
+                tags = {}
+              }
+            }
+            
+            policies = {}
+            users = {}
+            groups = {}
+            saml_providers = {}
+            oidc_providers = {}
+            service_account_roles = {}
+            instance_profiles = {}
+          }
+
+          module "test_ecr" {
+            source = "./modules/ecr"
+            
+            repository_name = "test-integration-repo"
+            
+            common_tags = {
+              Environment = "test"
+              Integration = "true"
+            }
+          }
+          EOF
+
+      - name: Terraform Init
+        run: terraform init
+
+      - name: Terraform Validate
+        run: terraform validate
+
+      - name: Terraform Plan
+        run: terraform plan
