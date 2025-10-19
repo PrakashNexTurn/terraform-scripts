@@ -230,7 +230,7 @@ variable "cluster_addons" {
       version = "v1.19.0-eksbuild.1"
     }
     kube-proxy = {
-      version = "v1.33.0-eksbuild.1"
+      version = "v1.33.3-eksbuild.6"
     }
   }
 }
