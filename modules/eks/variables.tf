@@ -145,11 +145,11 @@ variable "node_group_instance_types" {
 variable "node_group_ami_type" {
   description = "Type of Amazon Machine Image (AMI) associated with the EKS Node Group"
   type        = string
-  default     = "AL2023"
+  default     = "AL2023_x86_64_STANDARD"
   
   validation {
     condition = contains([
-      "AL2023",  
+      "AL2023_x86_64_STANDARD",  
       "CUSTOM", 
       "BOTTLEROCKET_ARM_64", 
       "BOTTLEROCKET_x86_64",
