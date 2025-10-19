@@ -96,7 +96,7 @@ output "registry_scanning_configuration" {
 # Docker commands for convenience
 output "docker_login_command" {
   description = "Docker login command for this repository"
-  value       = "aws ecr get-login-password --region ${data.aws_region.current.name} | docker login --username AWS --password-stdin ${aws_ecr_repository.main.repository_url}"
+  value       = "aws ecr get-login-password --region ${data.aws_region.current.id} | docker login --username AWS --password-stdin ${aws_ecr_repository.main.repository_url}"
 }
 
 output "docker_build_command" {
@@ -117,7 +117,7 @@ output "repository_info" {
     repository_name = aws_ecr_repository.main.name
     repository_url  = aws_ecr_repository.main.repository_url
     registry_id     = aws_ecr_repository.main.registry_id
-    region         = data.aws_region.current.name
+    region         = data.aws_region.current.id
     account_id     = data.aws_caller_identity.current.account_id
   }
 }
