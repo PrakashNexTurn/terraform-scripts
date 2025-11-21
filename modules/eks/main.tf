@@ -31,6 +31,12 @@ data "aws_iam_policy_document" "node_assume_role_policy" {
   }
 }
 
+# Local values for computed configurations
+locals {
+  # Use node_group_subnet_ids if provided and not empty, otherwise fall back to cluster subnet_ids
+  effective_node_group_subnet_ids = length(var.node_group_subnet_ids) > 0 ? var.node_group_subnet_ids : var.subnet_ids
+}
+
 # KMS key for EKS cluster encryption
 resource "aws_kms_key" "eks" {
   count                   = var.enable_encryption ? 1 : 0
@@ -172,7 +178,7 @@ resource "aws_eks_node_group" "main" {
   cluster_name    = aws_eks_cluster.main.name
   node_group_name = var.node_group_name
   node_role_arn   = aws_iam_role.node[0].arn
-  subnet_ids      = var.node_group_subnet_ids
+  subnet_ids      = local.effective_node_group_subnet_ids
 
   # Instance configuration
   capacity_type  = var.node_group_capacity_type
