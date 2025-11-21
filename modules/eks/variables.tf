@@ -17,7 +17,7 @@ variable "vpc_id" {
 }
 
 variable "subnet_ids" {
-  description = "List of subnet IDs for the EKS cluster (must be in at least two different availability zones)"
+  description = "List of subnet IDs for the EKS cluster (must be in at least two different availability zones). These will also be used for node groups if node_group_subnet_ids is not specified."
   type        = list(string)
   
   validation {
@@ -120,7 +120,7 @@ variable "node_group_name" {
 }
 
 variable "node_group_subnet_ids" {
-  description = "List of subnet IDs for the node group (if not provided, uses cluster subnet_ids)"
+  description = "List of subnet IDs for the node group. If empty (default), the cluster's subnet_ids will be used automatically. This allows for node group placement in specific subnets if needed."
   type        = list(string)
   default     = []
 }
