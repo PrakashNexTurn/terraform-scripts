@@ -20,28 +20,19 @@ variable "image_tag_mutability" {
   validation {
     condition = contains([
       "MUTABLE", 
-      "IMMUTABLE", 
-      "IMMUTABLE_WITH_EXCLUSION", 
-      "MUTABLE_WITH_EXCLUSION"
+      "IMMUTABLE"
     ], var.image_tag_mutability)
-    error_message = "Image tag mutability must be MUTABLE, IMMUTABLE, IMMUTABLE_WITH_EXCLUSION, or MUTABLE_WITH_EXCLUSION."
+    error_message = "Image tag mutability must be MUTABLE or IMMUTABLE. Note: IMMUTABLE_WITH_EXCLUSION and MUTABLE_WITH_EXCLUSION are not supported in this module version."
   }
 }
 
 variable "image_tag_mutability_exclusion_filters" {
-  description = "Configuration for image tag mutability exclusion filters"
+  description = "DEPRECATED: Configuration for image tag mutability exclusion filters. This variable is deprecated and not used in the current module implementation due to Terraform syntax limitations."
   type = list(object({
     filter      = string
     filter_type = string
   }))
   default = []
-  
-  validation {
-    condition = alltrue([
-      for filter in var.image_tag_mutability_exclusion_filters : filter.filter_type == "WILDCARD"
-    ])
-    error_message = "Filter type must be WILDCARD."
-  }
 }
 
 variable "force_delete" {
