@@ -73,7 +73,32 @@ resource "aws_ecr_repository" "main" {
     scan_on_push = var.scan_on_push
   }
 
-  # Image tag mutability exclusion filters
+  tags = merge(
+    var.common_tags,
+    {
+      Name = var.repository_name
+    }
+  )
+}
+
+# ECR Repository with image tag mutability exclusion filters (conditional resource)
+# This is created only when exclusion filters are provided and image_tag_mutability supports exclusions
+resource "aws_ecr_repository" "main_with_exclusions" {
+  count                = length(var.image_tag_mutability_exclusion_filters) > 0 && contains(["IMMUTABLE_WITH_EXCLUSION", "MUTABLE_WITH_EXCLUSION"], var.image_tag_mutability) ? 1 : 0
+  name                 = var.repository_name
+  image_tag_mutability = var.image_tag_mutability
+  force_delete         = var.force_delete
+
+  encryption_configuration {
+    encryption_type = var.enable_kms_encryption ? "KMS" : "AES256"
+    kms_key         = var.enable_kms_encryption ? aws_kms_key.ecr[0].arn : null
+  }
+
+  image_scanning_configuration {
+    scan_on_push = var.scan_on_push
+  }
+
+  # Create individual blocks for each exclusion filter
   dynamic "image_tag_mutability_exclusion_filter" {
     for_each = var.image_tag_mutability_exclusion_filters
     content {
@@ -90,17 +115,22 @@ resource "aws_ecr_repository" "main" {
   )
 }
 
+# Local value to determine which repository to use for outputs
+locals {
+  ecr_repository = length(var.image_tag_mutability_exclusion_filters) > 0 && contains(["IMMUTABLE_WITH_EXCLUSION", "MUTABLE_WITH_EXCLUSION"], var.image_tag_mutability) ? aws_ecr_repository.main_with_exclusions[0] : aws_ecr_repository.main
+}
+
 # ECR Repository Policy
 resource "aws_ecr_repository_policy" "main" {
   count      = var.repository_policy != null ? 1 : 0
-  repository = aws_ecr_repository.main.name
+  repository = local.ecr_repository.name
   policy     = var.repository_policy
 }
 
 # ECR Lifecycle Policy
 resource "aws_ecr_lifecycle_policy" "main" {
   count      = var.enable_lifecycle_policy ? 1 : 0
-  repository = aws_ecr_repository.main.name
+  repository = local.ecr_repository.name
 
   policy = var.lifecycle_policy != null ? var.lifecycle_policy : jsonencode({
     rules = [
