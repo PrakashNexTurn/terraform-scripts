@@ -73,14 +73,9 @@ resource "aws_ecr_repository" "main" {
     scan_on_push = var.scan_on_push
   }
 
-  # Image tag mutability exclusion filters
-  dynamic "image_tag_mutability_exclusion_filter" {
-    for_each = var.image_tag_mutability_exclusion_filters
-    content {
-      filter      = image_tag_mutability_exclusion_filter.value.filter
-      filter_type = image_tag_mutability_exclusion_filter.value.filter_type
-    }
-  }
+  # Note: image_tag_mutability_exclusion_filter is not supported in dynamic blocks
+  # This functionality would need to be implemented with individual static blocks
+  # if needed for specific use cases
 
   tags = merge(
     var.common_tags,
